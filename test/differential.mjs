@@ -45,6 +45,9 @@ const SOURCE = [
   // 对象展开：{ ...base, k: v }，后写字段覆盖前写
   'function spreadScore(n) { const base = { a: n, b: 1 }; const merged = { ...base, c: n * 2 }; return merged.a + merged.b + merged.c; }',
   'function spreadOverride(n) { const base = { a: n, b: 1 }; const merged = { ...base, a: 100 }; return merged.a + merged.b; }',
+  // class：构造器 this.x 赋值 -> 结构体，方法 -> impl
+  'class Counter { constructor(start) { this.value = start; this.step = 1; } bump() { this.value = this.value + this.step; return this.value; } scaled(k) { return this.value * k; } }',
+  'function classRun(start, times) { const c = new Counter(start); let acc = 0; for (let i = 0; i < times; i++) { acc = acc + c.bump(); } return acc + c.scaled(2); }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -99,6 +102,7 @@ const CASES = [
   { name: 'objMutate', inputs: [[4], [-2]] },
   { name: 'spreadScore', inputs: [[3], [-2]] },
   { name: 'spreadOverride', inputs: [[3], [7]] },
+  { name: 'classRun', inputs: [[1, 3], [0, 2], [5, 0]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {
