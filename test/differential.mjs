@@ -42,6 +42,9 @@ const SOURCE = [
   // 对象字面量：结构体映射，字段只支持 number/boolean/string
   'function objScore(n) { const r = { a: n, b: n > 0, s: "x" + n }; return r.a + (r.b ? 1 : 0) + r.s.length; }',
   'function objMutate(n) { const r = { v: n }; r.v = r.v * 3; return r.v; }',
+  // 对象展开：{ ...base, k: v }，后写字段覆盖前写
+  'function spreadScore(n) { const base = { a: n, b: 1 }; const merged = { ...base, c: n * 2 }; return merged.a + merged.b + merged.c; }',
+  'function spreadOverride(n) { const base = { a: n, b: 1 }; const merged = { ...base, a: 100 }; return merged.a + merged.b; }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -94,6 +97,8 @@ const CASES = [
   { name: 'tplMixed', inputs: [[3, 4], [0, 0]] },
   { name: 'objScore', inputs: [[5], [-3], [0]] },
   { name: 'objMutate', inputs: [[4], [-2]] },
+  { name: 'spreadScore', inputs: [[3], [-2]] },
+  { name: 'spreadOverride', inputs: [[3], [7]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {
