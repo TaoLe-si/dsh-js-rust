@@ -28,6 +28,13 @@ const SOURCE = [
   'function geo(x) { return Math.sqrt(Math.abs(x)) + Math.floor(x) + Math.ceil(x) + Math.trunc(x); }',
   'function powered(a, b) { return Math.pow(a, b); }',
   'function circleArea(r) { return Math.PI * r * r; }',
+  // 字符串与数组：独立函数没有调用点，用 //! types 标注参数类型
+  '//! types: text:string',
+  'function strLen(text) { return text.length; }',
+  'function greet(n) { return "n=" + n; }',
+  '//! types: nums:f64[]',
+  'function sumArr(nums) { let s = 0; for (let i = 0; i < nums.length; i++) { s += nums[i]; } return s; }',
+  'function buildAndCount(n) { let a = []; for (let i = 0; i < n; i++) { a.push(i * 2); } return a.length; }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -35,11 +42,16 @@ function withHarness(rust, signatures) {
   const arms = signatures.map((signature) => {
     const parse = signature.params.map((type, index) => {
       const raw = 'args[' + (index + 2) + ']'
-      return type === 'bool' ? raw + ' == "true"' : raw + '.parse::<f64>().unwrap()'
+      if (type === 'bool') return raw + ' == "true"'
+      if (type === 'string') return raw + '.clone()'
+      if (type === 'f64[]') return raw + '.split(\',\').filter(|s| !s.is_empty()).map(|s| s.parse::<f64>().unwrap()).collect::<Vec<f64>>()'
+      return raw + '.parse::<f64>().unwrap()'
     })
     const call = signature.name + '(' + parse.join(', ') + ')'
-    const print = signature.returns === 'bool' ? 'println!("{}", ' + call + ');' : 'println!("{}", ' + call + ');'
-    return '        "' + signature.name + '" => { ' + print + ' }'
+    // 无返回值（unit）不能用 println! 打印；数组用 Debug 打印
+    const printer = signature.returns === 'f64[]' ? 'println!("{:?}", ' : 'println!("{}", '
+    const body = signature.returns === null ? call + ';' : printer + call + ')'
+    return '        "' + signature.name + '" => { ' + body + ' }'
   }).join('\n')
   return rust + '\nfn main() {\n' +
     '    let args: Vec<String> = std::env::args().collect();\n' +
@@ -67,6 +79,10 @@ const CASES = [
   { name: 'geo', inputs: [[16.7], [-4.2]] },
   { name: 'powered', inputs: [[2, 10], [9, 0.5]] },
   { name: 'circleArea', inputs: [[1], [2.5]] },
+  { name: 'strLen', inputs: [['hello'], ['']] },
+  { name: 'greet', inputs: [[7], [3.5]] },
+  { name: 'sumArr', inputs: [['1,2,3'], ['10'], ['']] },
+  { name: 'buildAndCount', inputs: [[5]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {
@@ -81,10 +97,22 @@ test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () =>
   for (const item of CASES) {
     const fn = js[item.name]
     assert.equal(typeof fn, 'function', 'JS 侧缺少函数 ' + item.name)
+    const signature = signatures.find((entry) => entry.name === item.name)
     for (const args of item.inputs) {
-      const expected = fn(...args)
+      // argv 只能传字符串，JS 侧要按声明的参数类型还原成真正的值
+      const jsArgs = args.map((value, index) => {
+        const type = signature.params[index]
+        if (type === 'f64[]') return String(value).split(',').filter((part) => part !== '').map(Number)
+        if (type === 'string') return String(value)
+        return Number(value)
+      })
+      const expected = fn(...jsArgs)
       const { stdout } = await run(exePath, [item.name, ...args.map(String)], { timeout: 30000 })
-      const actual = typeof expected === 'boolean' ? stdout.trim() === 'true' : Number(stdout.trim())
+      const actual = typeof expected === 'boolean'
+        ? stdout.trim() === 'true'
+        : typeof expected === 'string'
+          ? stdout.trim()
+          : Number(stdout.trim())
       assert.equal(actual, expected, item.name + '(' + args.join(', ') + ') 期望 ' + expected + ' 实际 ' + actual)
       checked += 1
     }

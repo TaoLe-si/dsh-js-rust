@@ -56,11 +56,15 @@ export function withHarness(rust, signatures) {
   const arms = signatures.map((signature) => {
     const parsed = signature.params.map((type, index) => {
       const raw = 'args[' + (index + 2) + ']'
-      return type === 'bool' ? raw + ' == "true"' : raw + '.parse::<f64>().unwrap()'
+      if (type === 'bool') return raw + ' == "true"'
+      if (type === 'string') return raw + '.clone()'
+      if (type === 'f64[]') return raw + '.split(\',\').filter(|s| !s.is_empty()).map(|s| s.parse::<f64>().unwrap()).collect::<Vec<f64>>()'
+      return raw + '.parse::<f64>().unwrap()'
     })
     const call = signature.name + '(' + parsed.join(', ') + ')'
-    // 无返回值（unit）的函数不能用 println! 打印，直接调用即可
-    const body = signature.returns === null ? call + ';' : 'println!("{}", ' + call + ')'
+    // 无返回值（unit）不能用 println! 打印；数组用 Debug 打印
+    const printer = signature.returns === 'f64[]' ? 'println!("{:?}", ' : 'println!("{}", '
+    const body = signature.returns === null ? call + ';' : printer + call + ')'
     return '        "' + signature.name + '" => { ' + body + ' }'
   }).join('\n')
   return rust + '\nfn main() {\n' +

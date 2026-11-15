@@ -18,13 +18,16 @@
 
 ## 支持的子集（v0.1）
 
-- **类型**：`number`（f64）、`boolean`
+- **类型**：`number`（f64）、`boolean`、`string`、`number[]`（f64[]）
 - **语句**：`let` / `const` / `var`、`if` / `else`、`while`、`for`、`return`、`break`、
   `continue`（`for` 内不支持 `continue`，会明确报错，请改用 `while`）
 - **运算**：`+ - * / %`、`< <= > >=`、`== != === !==`、`&&` `||` `!`、三元 `?:`、
   `+= -= *= /= %=`、`++` `--`
 - **函数**：声明、调用、递归；参数与返回值类型由调用点迭代推断，冲突即报错
-- **Node / JS 运行时垫片**：`console.log`（→ `println!`）、`Math.floor/ceil/trunc/abs/sqrt/pow/round/sign/min/max`、`Math.PI`、`Math.E`
+- **字符串**：字面量、+ 拼接（含与数字强转）、== / !=、.length
+- **数组**：[1,2,3] 字面量、下标读写、.length、.push()（仅 number 数组）
+- **Node / JS 运行时垫片**：console.log（→ println!）、Math.floor/ceil/trunc/abs/sqrt/pow/round/sign/min/max、Math.PI、Math.E
+- **类型标注**：独立函数没有调用点可推断时，用 //! types: s:string a:f64[] 声明参数类型
 - **不支持**：字符串、数组、对象、闭包、async、try/catch、类、switch、解构、可选链，
   以及 **`fs` / `net` / `child_process` / `process` 等真实 I/O 与宿主 API**
 
