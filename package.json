@@ -1,0 +1,34 @@
+{
+  "name": "dsh-js-rust",
+  "version": "0.1.0",
+  "description": "DSH 插件：把受支持的 JS 数值子集转译成 Rust 并本地编译（含差分验证）。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./transpile": "./lib/transpile.mjs",
+    "./compile": "./lib/compile.mjs"
+  },
+  "bin": {
+    "jsrust": "./bin/jsrust.mjs"
+  },
+  "scripts": {
+    "test": "node --test test/differential.mjs",
+    "doctor": "node bin/jsrust.mjs doctor"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "rust",
+    "transpiler"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "dsh": {
+    "displayName": "JS→Rust 转译器",
+    "description": "JS 子集转译成 Rust 并编译，可用于把数值热点换成原生实现"
+  }
+}
