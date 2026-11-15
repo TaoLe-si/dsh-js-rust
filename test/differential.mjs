@@ -11,6 +11,7 @@ import { transpile } from '../lib/transpile.mjs'
 import { compileRust } from '../lib/compile.mjs'
 
 const run = promisify(execFile)
+const BT = String.fromCharCode(96) // 反引号：模板字符串测试用
 
 const SOURCE = [
   'function fib(n) { if (n < 2) { return n; } return fib(n - 1) + fib(n - 2); }',
@@ -35,6 +36,9 @@ const SOURCE = [
   '//! types: nums:f64[]',
   'function sumArr(nums) { let s = 0; for (let i = 0; i < nums.length; i++) { s += nums[i]; } return s; }',
   'function buildAndCount(n) { let a = []; for (let i = 0; i < n; i++) { a.push(i * 2); } return a.length; }',
+  // 模板字符串与 export：模板会被转成 format!，插值支持任意可 Display 的值
+  'export function tpl(n) { return ' + BT + 'value: ${n}' + BT + '; }',
+  'function tplMixed(a, b) { return ' + BT + '${a}+${b}=' + BT + ' + (a + b); }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -83,6 +87,8 @@ const CASES = [
   { name: 'greet', inputs: [[7], [3.5]] },
   { name: 'sumArr', inputs: [['1,2,3'], ['10'], ['']] },
   { name: 'buildAndCount', inputs: [[5]] },
+  { name: 'tpl', inputs: [[42], [3.5]] },
+  { name: 'tplMixed', inputs: [[3, 4], [0, 0]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {
@@ -90,7 +96,8 @@ test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () =>
   const { exePath, rustc } = await compileRust(withHarness(rust, signatures), { name: 'diff' })
   const js = {}
   for (const signature of signatures) {
-    js[signature.name] = new Function(SOURCE + '\nreturn ' + signature.name + ';')()
+    // JS 侧用 Function 求值，export 关键字在函数体内非法，先剥掉
+    js[signature.name] = new Function(SOURCE.replace(/export /g, '') + '\nreturn ' + signature.name + ';')()
   }
 
   let checked = 0

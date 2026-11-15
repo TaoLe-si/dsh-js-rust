@@ -10,7 +10,7 @@ import { transpile } from './lib/transpile.mjs'
 
 export const inject = ['webServer']
 
-const VERSION = '0.1.0'
+const VERSION = '0.3.0'
 const ROUTE_PREFIX = '/api/js-rust'
 
 function sendJson(res, status, body) {
