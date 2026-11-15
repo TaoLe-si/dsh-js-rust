@@ -76,7 +76,7 @@ export function withHarness(rust, signatures) {
     })
     const call = signature.name + '(' + parsed.join(', ') + ')'
     // 无返回值（unit）不能用 println! 打印；数组用 Debug 打印
-    const printer = signature.returns === 'f64[]' ? 'println!("{:?}", ' : 'println!("{}", '
+    const printer = (signature.returns === 'f64[]' || String(signature.returns).startsWith('obj:')) ? 'println!("{:?}", ' : 'println!("{}", '
     const body = signature.returns === null ? call + ';' : printer + call + ')'
     return '        "' + signature.name + '" => { ' + body + ' }'
   }).join('\n')

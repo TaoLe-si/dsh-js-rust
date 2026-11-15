@@ -39,6 +39,9 @@ const SOURCE = [
   // 模板字符串与 export：模板会被转成 format!，插值支持任意可 Display 的值
   'export function tpl(n) { return ' + BT + 'value: ${n}' + BT + '; }',
   'function tplMixed(a, b) { return ' + BT + '${a}+${b}=' + BT + ' + (a + b); }',
+  // 对象字面量：结构体映射，字段只支持 number/boolean/string
+  'function objScore(n) { const r = { a: n, b: n > 0, s: "x" + n }; return r.a + (r.b ? 1 : 0) + r.s.length; }',
+  'function objMutate(n) { const r = { v: n }; r.v = r.v * 3; return r.v; }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -53,7 +56,7 @@ function withHarness(rust, signatures) {
     })
     const call = signature.name + '(' + parse.join(', ') + ')'
     // 无返回值（unit）不能用 println! 打印；数组用 Debug 打印
-    const printer = signature.returns === 'f64[]' ? 'println!("{:?}", ' : 'println!("{}", '
+    const printer = (signature.returns === 'f64[]' || String(signature.returns).startsWith('obj:')) ? 'println!("{:?}", ' : 'println!("{}", '
     const body = signature.returns === null ? call + ';' : printer + call + ')'
     return '        "' + signature.name + '" => { ' + body + ' }'
   }).join('\n')
@@ -89,6 +92,8 @@ const CASES = [
   { name: 'buildAndCount', inputs: [[5]] },
   { name: 'tpl', inputs: [[42], [3.5]] },
   { name: 'tplMixed', inputs: [[3, 4], [0, 0]] },
+  { name: 'objScore', inputs: [[5], [-3], [0]] },
+  { name: 'objMutate', inputs: [[4], [-2]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {
