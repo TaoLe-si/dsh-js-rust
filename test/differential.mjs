@@ -59,6 +59,11 @@ const SOURCE = [
   'function swAssign(n) { let r = 0; switch (n) { case 0: r = 10; break; default: r = 20; } return r; }',
   // 数字分隔符
   'function sepSum() { return 1_000 + 2_500; }',
+  '//! types: nums:f64[], arr:f64[]',
+  // for...of 与解构
+  'function sumForOf(nums) { let total = 0; for (const x of nums) { total = total + x; } return total; }',
+  'function destrObj(n) { const p = { x: n, y: n * 2 }; const { x, y } = p; return x + y; }',
+  'function destrArray(arr) { const [first, second] = arr; return first * second; }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -121,6 +126,9 @@ const CASES = [
   { name: 'swGrade', inputs: [[1], [2], [9]] },
   { name: 'swAssign', inputs: [[0], [3]] },
   { name: 'sepSum', inputs: [[]] },
+  { name: 'sumForOf', inputs: [['1,2,3'], ['10,-5'], ['']] },
+  { name: 'destrObj', inputs: [[3], [-2]] },
+  { name: 'destrArray', inputs: [['4,5'], ['3,7']] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {

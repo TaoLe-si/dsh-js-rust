@@ -50,12 +50,16 @@ await walk(root, files, 0)
 
 const tally = new Map()
 let passed = 0
+let passedBytes = 0
+let totalBytes = 0
 const passedFiles = []
 for (const file of files) {
   const info = await stat(file)
   if (info.size > 2 * 1024 * 1024) continue
   let source
   try { source = await readFile(file, 'utf8') } catch { continue }
+  // 文件数会被「空的类型声明文件」美化，所以同时统计字节数
+  totalBytes += info.size
   try {
     if (projectMode) {
       // project 模式：整棵模块图都要能转，才算这个入口可用
@@ -64,6 +68,7 @@ for (const file of files) {
       transpile(source)
     }
     passed += 1
+    passedBytes += info.size
     passedFiles.push(relative(root, file))
   } catch (error) {
     const key = bucket(String(error && error.message ? error.message : error))
@@ -74,7 +79,9 @@ for (const file of files) {
 const total = [...tally.values()].reduce((a, b) => a + b, 0) + passed
 console.log('扫描目录 :', root)
 console.log('JS 文件  :', total)
-console.log('可转译   :', passed, '(' + (total ? ((passed / total) * 100).toFixed(2) : '0') + '%)')
+const pct = (part, whole) => (whole ? ((part / whole) * 100).toFixed(2) : '0.00')
+console.log('可转译   :', passed, '/' + total + ' 文件  (' + pct(passed, total) + '%)')
+console.log('代码量   :', (passedBytes / 1024).toFixed(1) + ' KB / ' + (totalBytes / 1024).toFixed(1) + ' KB  (' + pct(passedBytes, totalBytes) + '%)')
 console.log('')
 console.log('失败分布（按首个阻断原因）:')
 for (const [key, count] of [...tally.entries()].sort((a, b) => b[1] - a[1])) {
