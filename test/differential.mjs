@@ -54,6 +54,11 @@ const SOURCE = [
     function reWord(s) { return /[a-z]+/.test(s) ? 1 : 0; },
     function reUpper(s) { return /^[A-Z][a-z]*$/.test(s); },
     function reSpace(s) { return /\\s+/.test(s); },
+  // switch：转成 if/else if 链（尾部 break 剥离，拒绝 fallthrough）
+  'function swGrade(n) { switch (n) { case 1: return 1; case 2: return 2; default: return 0; } }',
+  'function swAssign(n) { let r = 0; switch (n) { case 0: r = 10; break; default: r = 20; } return r; }',
+  // 数字分隔符
+  'function sepSum() { return 1_000 + 2_500; }',
 ] .join('\n')
 
 /** 生成带 main 的 Rust 源码，按 argv 分派调用。 */
@@ -113,6 +118,9 @@ const CASES = [
   { name: 'reWord', inputs: [['ab1'], ['123'], ['']] },
   { name: 'reUpper', inputs: [['Hello'], ['hello']] },
   { name: 'reSpace', inputs: [['a b'], ['ab']] },
+  { name: 'swGrade', inputs: [[1], [2], [9]] },
+  { name: 'swAssign', inputs: [[0], [3]] },
+  { name: 'sepSum', inputs: [[]] },
 ]
 
 test('差分：转译后的 Rust 与 Node 执行结果逐项一致', async () => {

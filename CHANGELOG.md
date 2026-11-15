@@ -182,3 +182,21 @@ export 其它形式      7     正则字面量        6
 新通过的文件：`dsh-agent/lib/types/{runtime-types,types}.js`、`dsh-llm/lib/types/types.js`、
 `dsh-llm-retry/lib/types/{brand,types}.js`、`dsh-plugin-manager/lib/types/types.js`。
 它们都是「只有 import/空导出」的类型声明/转发文件，转译成空模块是正确结果。
+
+## 0.10.0（第 7 轮）
+
+- **switch 语句**：转成 Rust 的 if/else if 等值链；每个 case 尾部的 `break` 会剥掉，
+  中途 `break`（fallthrough）明确报错——等值比较无法表达穿透语义，不猜。
+- **数字分隔符**：`1_000` / `2_500` 正确解析（此前在 `_` 处截断，报「期望 ;」）。
+- 推断层补上 switch 遍历（`return` 与变量声明在 case 内也能参与类型推断）。
+
+### 覆盖率（第 7 轮）
+
+| 轮次 | 覆盖率 | 消除的阻断 |
+| --- | --- | --- |
+| 6 | 9.84% | 空/转发模块解禁 |
+| 7 | 9.84% | switch（5 处）+ 数字分隔符（2 处） |
+
+阻断已转移到：箭头函数 5、展开调用 5、`extends` 4、裸包导入 4、`|` 3、`for...of` 2、
+默认参数 2、解构 2。**每一项只卡 2~5 个文件**，而一个文件必须全清才算通过——
+这就是覆盖率不动的原因，与第 3 轮的判断一致。
