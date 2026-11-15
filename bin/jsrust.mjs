@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { transpile } from '../lib/transpile.mjs'
+import { transpileProject, projectHarness } from '../lib/project.mjs'
 import { compileRust, findRustc } from '../lib/compile.mjs'
 
 const run = promisify(execFile)
@@ -27,6 +28,18 @@ async function main(argv) {
     return 0
   }
   if (!file) { console.error('缺少输入文件'); return 2 }
+  // project 分支必须早于单文件 transpile：带 import 的文件单文件模式会直接报错
+  if (command === 'project') {
+    // 整个模块图 -> 单个 crate（嵌套 mod），并编译成可执行文件
+    const project = await transpileProject(file)
+    const { exePath, cached } = await compileRust(projectHarness(project), { name: 'project' })
+    console.log('入口模块: ' + project.entry)
+    console.log('模块数  : ' + project.modules.length + ' (' + project.modules.map((item) => item.name).join(', ') + ')')
+    console.log('产物    : ' + exePath + (cached ? ' (缓存命中)' : ' (新编译)'))
+    const entry = project.modules.find((item) => item.name === project.entry)
+    console.log('导出函数: ' + entry.signatures.map((item) => item.name).join(', '))
+    return 0
+  }
   const source = await readFile(file, 'utf8')
   const { rust, signatures } = transpile(source)
   if (command === 'transpile') { process.stdout.write(rust); return 0 }

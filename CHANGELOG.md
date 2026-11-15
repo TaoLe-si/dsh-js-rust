@@ -43,3 +43,33 @@
 
 首个可转译的真实 DSH 文件：dsh-llm-retry/lib/types/brand.js。
 当前最大阻断：ESM 模块语法（宿主包 70.5%、插件 95.1%）——下一步是模块图。
+
+## 0.4.0
+
+- **ESM 模块支持（解析层）**：`import { a as b } from './x.js'`、`import d from ...`、`import './x.js'`（副作用）、
+  `export function`、`export const`、`export { a as b }`、模块级 `const`。
+- **project 模式**：`lib/project.mjs` 解析整棵模块图，按相对路径补全扩展名、生成唯一模块名，
+  产出**单文件 crate（嵌套 `pub mod`）**；跨模块函数调用与常量引用生成 `crate::<mod>::<name>`。
+  命令行：`node bin/jsrust.mjs project <入口>` 直接编译成可执行文件。
+- **survey 增加 `--project`**：以「整棵模块图能不能转」为口径度量覆盖率。
+- 单文件模式下若引用了 import 进来的名字，给出明确指引（改用 project 模式），不再报「未声明的标识符」。
+
+### 覆盖率（目标指标，第 1 轮）
+
+| 阶段 | DSH 宿主包(61) | profile 插件(41) |
+| --- | --- | --- |
+| 0.3.0 | 1.64% | 2.44% |
+| 0.4.0（+ESM/模块图） | 1.64% | 2.44% |
+
+**语法层阻断已转移**：`module syntax` 从 70.5% 降到 11.5%，剩下的真实阻断是：
+
+| 阻断 | 命中 | 需要什么 |
+| --- | --- | --- |
+| 对象字面量 | 13 | 结构体/Map 表示 |
+| export 其它形式 | 7 | export class / export default |
+| 正则字面量 | 6 | Rust regex crate 或手工实现 |
+| 无声明模块 | 5 | 纯 re-export 透传 |
+| 语句位置 import / new / function 表达式 | 8 | 动态导入 / 类实例化 / 闭包 |
+
+结论：**下周目（第 2 轮）主攻对象字面量与 export 变体**；但 `new`、`function` 表达式、
+动态 import 已经指向闭包与类——那是 JS 引擎范畴，到那一步就是结构上限。

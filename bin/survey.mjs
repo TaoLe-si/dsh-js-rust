@@ -7,6 +7,7 @@
 import { readdir, readFile, stat } from 'node:fs/promises'
 import { join, relative } from 'node:path'
 import { transpile } from '../lib/transpile.mjs'
+import { transpileProject } from '../lib/project.mjs'
 
 async function walk(dir, out, depth) {
   if (depth > 12) return
@@ -26,7 +27,12 @@ async function walk(dir, out, depth) {
 /** 把错误消息归一到稳定桶名，便于统计。 */
 function bucket(message) {
   if (/字符串字面量/.test(message)) return 'string literal'
-  if (/顶层只允许 function 声明|只允许顶层/.test(message)) return 'module syntax (import/export/class)'
+  if (/顶层只允许|只允许顶层|export 目前支持|import 缺少|暂不支持 default/.test(message)) return 'module syntax (import/export/class)'
+  if (/跨模块名字/.test(message)) return 'cross-module reference (single-file mode)'
+  if (/对象字面量/.test(message)) return 'object literal'
+  if (/正则字面量/.test(message)) return 'regex literal'
+  if (/未声明的标识符/.test(message)) return 'unknown identifier (closure/param pattern)'
+  if (/没有任何可转译的声明/.test(message)) return 'no translatable declaration (re-export only)'
   const charMatch = /子集外的字符 (.*)$/.exec(message)
   if (charMatch) return 'unsupported char ' + charMatch[1]
   if (/数组字面量/.test(message)) return 'array literal'
@@ -35,8 +41,10 @@ function bucket(message) {
   return message.slice(0, 40)
 }
 
-const root = process.argv[2]
-if (!root) { console.error('用法: node bin/survey.mjs <目录>'); process.exit(2) }
+const args = process.argv.slice(2)
+const projectMode = args.includes('--project')
+const root = args.find((item) => !item.startsWith('--'))
+if (!root) { console.error('用法: node bin/survey.mjs <目录> [--project]'); process.exit(2) }
 const files = []
 await walk(root, files, 0)
 
@@ -49,7 +57,12 @@ for (const file of files) {
   let source
   try { source = await readFile(file, 'utf8') } catch { continue }
   try {
-    transpile(source)
+    if (projectMode) {
+      // project 模式：整棵模块图都要能转，才算这个入口可用
+      await transpileProject(file)
+    } else {
+      transpile(source)
+    }
     passed += 1
     passedFiles.push(relative(root, file))
   } catch (error) {
